@@ -181,6 +181,7 @@ int dfuse_special_command(struct dfu_if *dif, unsigned int address,
 	struct dfu_status dst;
 	int firstpoll = 1;
 	int zerotimeouts = 0;
+	int retries = 0;
 
 	if (command == ERASE_PAGE) {
 		struct memsegment *segment;
@@ -225,8 +226,14 @@ int dfuse_special_command(struct dfu_if *dif, unsigned int address,
 			dfuse_command_name[command]);
 	}
 	do {
+retry:
 		ret = dfu_get_status(dif, &dst);
 		if (ret < 0) {
+			if (++retries < 10) {
+				usleep(10);
+				goto retry;
+			}
+
 			errx(EX_IOERR, "Error during special command \"%s\" get_status",
 			     dfuse_command_name[command]);
 		}
@@ -273,6 +280,7 @@ int dfuse_dnload_chunk(struct dfu_if *dif, unsigned char *data, int size,
 	int bytes_sent;
 	struct dfu_status dst;
 	int ret;
+	int retries = 0;
 
 	ret = dfuse_download(dif, size, size ? data : NULL, transaction);
 	if (ret < 0) {
@@ -282,8 +290,14 @@ int dfuse_dnload_chunk(struct dfu_if *dif, unsigned char *data, int size,
 	bytes_sent = ret;
 
 	do {
+retry:
 		ret = dfu_get_status(dif, &dst);
 		if (ret < 0) {
+			if (++retries < 10) {
+				usleep(10);
+				goto retry;
+			}
+
 			errx(EX_IOERR, "Error during download get_status");
 			return ret;
 		}
